@@ -2,6 +2,30 @@
 
 A full-stack web application that shows upcoming satellite passes over any city using real TLE (Two-Line Element) data from Celestrak. Enter a city name to see satellite passes, view animated ground tracks on a map, and explore data insights with interactive charts.
 
+## Demo
+
+<p align="center">
+  <img src="Demo1.png" width="800" alt="Demo 1 - Home & Search" />
+</p>
+<p align="center"><em>Search for a city to see satellite passes</em></p>
+
+<p align="center">
+  <img src="Demo2.png" width="800" alt="Demo 2 - Interactive Map" />
+</p>
+<p align="center"><em>Interactive map with satellite ground track</em></p>
+
+<p align="center">
+  <img src="Demo3.png" width="800" alt="Demo 3 - Pass List" />
+</p>
+<p align="center"><em>Upcoming satellite passes table</em></p>
+
+<p align="center">
+  <img src="Demo4.png" width="800" alt="Demo 4 - Dashboard" />
+</p>
+<p align="center"><em>Data insights dashboard with charts</em></p>
+
+---
+
 ## Features
 
 - **City search** — Enter any city name to get upcoming satellite pass predictions
