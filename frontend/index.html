@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satellites Over My City</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=Orbitron:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header">
+        <h1>Satellites Over My City</h1>
+        <p class="subtitle">Discover upcoming satellite passes above your location</p>
+        <div class="status-bar">
+            <span id="connection-status" class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Checking...</span>
+            </span>
+        </div>
+    </header>
+
+    <main class="main">
+        <section class="search-section">
+            <div class="search-bar">
+                <input type="text" id="city-input" placeholder="Enter city name (e.g., Chennai, London)" aria-label="City name">
+                <button id="search-btn" type="button">Search</button>
+            </div>
+            <div id="error-banner" class="error-banner hidden"></div>
+        </section>
+
+        <section class="map-section">
+            <div id="map" class="map-container"></div>
+        </section>
+
+        <section class="pass-list-section">
+            <h2>Upcoming Passes</h2>
+            <div id="loading-spinner" class="spinner hidden"></div>
+            <div class="table-wrapper">
+                <table class="pass-table">
+                    <thead>
+                        <tr>
+                            <th>Satellite Name</th>
+                            <th>Rise Time</th>
+                            <th>Peak Time</th>
+                            <th>Set Time</th>
+                            <th>Max Elevation</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pass-table-body">
+                        <tr class="empty-row">
+                            <td colspan="6">Search for a city to see satellite passes</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="dashboard-section">
+            <h2>Data Insights</h2>
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>Passes per Day (Next 7 Days)</h3>
+                    <canvas id="passes-per-day-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Orbit Type Distribution</h3>
+                    <canvas id="orbit-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Top 10 Most Frequent Satellites</h3>
+                    <canvas id="top-satellites-chart"></canvas>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Satellite data provided by <a href="https://celestrak.org" target="_blank" rel="noopener">Celestrak</a></p>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
