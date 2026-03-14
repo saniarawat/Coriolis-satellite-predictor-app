@@ -2,7 +2,10 @@
  * Satellites Over My City - Frontend Application
  */
 
-const API_BASE = 'http://localhost:5001/api';
+// Use localhost:5001 when running frontend separately (dev), else same-origin
+const API_BASE = (window.location.port === '8080' || window.location.port === '8000')
+    ? 'http://localhost:5001/api'
+    : window.location.origin + '/api';
 
 let map = null;
 let cityMarker = null;
@@ -94,7 +97,7 @@ async function handleSearch() {
         updateCharts(statsData, city);
         document.querySelector('.pass-list-section').classList.add('fade-in');
     } catch (err) {
-        showError('Could not connect to backend. Make sure it is running on port 5001.');
+        showError('Could not connect to backend. Please check your connection.');
     } finally {
         spinner.classList.add('hidden');
     }

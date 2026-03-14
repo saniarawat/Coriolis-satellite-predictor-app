@@ -3,3 +3,4 @@ flask-cors
 requests
 pyorbital
 python-dotenv
+gunicorn

@@ -82,6 +82,30 @@ Press **Ctrl+C** in each terminal where the backend or frontend is running.
 
 ---
 
+## Deploy to Railway
+
+1. **Sign up** at [railway.app](https://railway.app) and connect your GitHub account.
+
+2. **New Project** → **Deploy from GitHub repo** → select `Coriolis-satellite-predictor-app`.
+
+3. **Configure the service:**
+   - Railway auto-detects the Procfile
+   - Set **Root Directory** to empty (repo root) — the Procfile runs from backend
+   - Add a variable: `FLASK_ENV` = `production` (optional, disables debug)
+
+4. **Generate domain:** In the service → **Settings** → **Networking** → **Generate Domain**. You'll get a URL like `https://xxx.railway.app`.
+
+5. **Load satellite data** (after first deploy):
+   ```bash
+   curl -X POST https://YOUR-RAILWAY-URL.railway.app/api/satellites/refresh
+   ```
+
+6. **Important:** Railway uses ephemeral storage. The SQLite database resets on redeploy. Run `/api/satellites/refresh` after each deploy to repopulate TLE data.
+
+**Note:** For persistent data, add a Railway Volume and mount it to `backend/database/` in the dashboard.
+
+---
+
 ## Project Structure
 
 ```
@@ -125,7 +149,7 @@ satellite-app/
 
 **Architecture error (arm64/x86_64):** Run `./setup_venv.sh` or recreate venv with `arch -arm64 python3 -m venv venv`.
 
-**Port 5001 in use:** Set `PORT=5002 python3 app.py` (and update `API_BASE` in `frontend/app.js`).
+**Port 5001 in use:** Set `PORT=5002 python3 app.py`. The frontend auto-detects localhost:5001 when run on port 8080.
 
 **City not found:** Try different spellings or use a larger city name.
 
