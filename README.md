@@ -79,7 +79,7 @@ source venv/bin/activate
 python3 app.py
 ```
 
-Backend runs at **http://localhost:5001** (port 5000 is often used by macOS AirPlay). Set `PORT=5000` to override.
+[Backend runs at **http://localhost:5001** (port 5000 is often used by macOS AirPlay). Set `PORT=5000` to override.](https://web-production-2ea3c.up.railway.app/)
 
 ### 3. Load satellite data (run once)
 
