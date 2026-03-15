@@ -175,9 +175,11 @@ def get_city_stats():
         loc = geocode_city(city)
         lat, lon = loc["lat"], loc["lon"]
 
-        satellites = get_all_satellites()[:300]
+        # Use fewer satellites and 3 days to avoid worker timeout in production
+        satellites = get_all_satellites()[:100]
         all_passes = []
         orbit_counts = {"LEO": 0, "MEO": 0, "GEO": 0, "OTHER": 0}
+        hours_ahead = 24 * 3  # 3 days for stats (keeps response under timeout)
 
         for sat in satellites:
             try:
@@ -191,7 +193,7 @@ def get_city_stats():
                     lat,
                     lon,
                     altitude_km=0,
-                    hours_ahead=24 * 7,
+                    hours_ahead=hours_ahead,
                 )
                 for p in passes_list:
                     orbit_counts[orbit_type] += 1
@@ -209,7 +211,8 @@ def get_city_stats():
         total_passes = len(all_passes)
         durations = [p["duration_seconds"] for p in all_passes]
         avg_duration = sum(durations) / len(durations) if durations else 0
-        passes_per_day = total_passes / 7.0 if total_passes else 0
+        num_days = 3  # matches hours_ahead
+        passes_per_day = total_passes / num_days if total_passes else 0
 
         from datetime import timezone
         passes_by_day = [0] * 7
