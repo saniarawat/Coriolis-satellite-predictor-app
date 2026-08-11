@@ -59,9 +59,9 @@ def _parse_tle_text(text):
 
 def fetch_and_store_tles():
     """
-    Fetch TLE data from multiple focused CelesTrak groups and store in DB.
-    Uses smaller groups to avoid the timeout caused by the full active catalog
-    (~14,000 satellites) on Render's free tier.
+    Fetch TLE data from multiple focused CelesTrak groups in parallel and store in DB.
+    Uses smaller groups fetched concurrently to avoid the timeout caused by the full
+    active catalog (~14,000 satellites) on Render's free tier.
 
     Returns:
         int: Total unique satellites fetched and stored
@@ -69,23 +69,30 @@ def fetch_and_store_tles():
     Raises:
         Exception: If every group fetch fails
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def fetch_group(group):
+        url = CELESTRAK_BASE.format(group)
+        resp = requests.get(url, headers=HEADERS, timeout=30)
+        resp.raise_for_status()
+        text = resp.text.strip()
+        if not text or text.startswith("GP data has not"):
+            return []
+        return _parse_tle_text(text)
+
     seen_norad = {}  # deduplicate by norad_id
     failed_groups = []
 
-    for group in CELESTRAK_GROUPS:
-        url = CELESTRAK_BASE.format(group)
-        try:
-            resp = requests.get(url, headers=HEADERS, timeout=30)
-            resp.raise_for_status()
-            text = resp.text.strip()
-            # CelesTrak returns a plain-text message if rate-limited
-            if not text or text.startswith("GP data has not"):
-                continue
-            for sat in _parse_tle_text(text):
-                seen_norad[sat["norad_id"]] = sat
-        except Exception:
-            failed_groups.append(group)
-            continue
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(fetch_group, g): g for g in CELESTRAK_GROUPS}
+        for future in as_completed(futures):
+            group = futures[future]
+            try:
+                sats = future.result()
+                for sat in sats:
+                    seen_norad[sat["norad_id"]] = sat
+            except Exception:
+                failed_groups.append(group)
 
     if not seen_norad and failed_groups:
         raise ConnectionError(
@@ -97,4 +104,5 @@ def fetch_and_store_tles():
         save_satellites(all_satellites)
 
     return len(all_satellites)
+
 
