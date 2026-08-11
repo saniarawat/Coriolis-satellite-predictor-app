@@ -130,12 +130,8 @@ This app is deployed on [Render](https://render.com) (free tier). A `render.yaml
    - In your Render Dashboard, add the exact same `REFRESH_SECRET` to your web service's **Environment Variables** and save.
    - Go to your GitHub repository's **Actions** tab, select **Refresh TLE Data**, and run it manually once to load the initial data.
 
-6. **Important: Keep the app awake (UptimeRobot)!**
-   - Render's free tier spins down after 15 minutes of inactivity, which **wipes the SQLite database** on every sleep cycle.
-   - To prevent data loss and ensure your app opens instantly with data, sign up for a free account at [UptimeRobot](https://uptimerobot.com).
-   - Create an HTTP(s) monitor pointing to `https://satellite-predictor.onrender.com/api/health` with a 5-minute interval. This keeps your app awake 24/7!
-
-**Note:** For persistent data across restarts without UptimeRobot, add a Render Disk (mountPath `/data`, set env var `DATABASE_PATH=/data/satellites.db`) or migrate to Render's free PostgreSQL.
+6. **Important Note on Render Free Tier:**
+   - Render's free tier spins down after 15 minutes of inactivity, which wipes the ephemeral SQLite database. The GitHub Action ensures data is refreshed regularly, but to guarantee passes are always available instantly, you can prevent the app from sleeping using an uptime monitoring service. Alternatively, for persistent storage, you can add a Render Disk (mountPath `/data`, set env var `DATABASE_PATH=/data/satellites.db`) or migrate to Render's free PostgreSQL.
 
 ---
 
