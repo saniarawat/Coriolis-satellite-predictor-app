@@ -1,6 +1,6 @@
 # Satellites Over My City
 
-Link to the dashboard - https://web-production-2ea3c.up.railway.app/ 
+🚀 **Live App:** https://satellite-predictor.onrender.com
 
 A full-stack web application that shows upcoming satellite passes over any city using real TLE (Two-Line Element) data from Celestrak. Enter a city name to see satellite passes, view animated ground tracks on a map, and explore data insights with interactive charts.
 
@@ -81,7 +81,7 @@ source venv/bin/activate
 python3 app.py
 ```
 
-[Backend runs at **http://localhost:5001** (port 5000 is often used by macOS AirPlay). Set `PORT=5000` to override.](https://web-production-2ea3c.up.railway.app/)
+Backend runs at **http://localhost:5001** (port 5000 is often used by macOS AirPlay). Set `PORT=5000` to override.
 
 ### 3. Load satellite data (run once)
 
@@ -108,27 +108,30 @@ Press **Ctrl+C** in each terminal where the backend or frontend is running.
 
 ---
 
-## Deploy to Railway
+## Deploy to Render
 
-1. **Sign up** at [railway.app](https://railway.app) and connect your GitHub account.
+This app is deployed on [Render](https://render.com) (free tier). A `render.yaml` blueprint is included in the repo root for one-click setup.
 
-2. **New Project** → **Deploy from GitHub repo** → select `Coriolis-satellite-predictor-app`.
+1. **Sign up** at [render.com](https://render.com) and connect your GitHub account.
 
-3. **Configure the service:**
-   - Railway auto-detects the Procfile
-   - Set **Root Directory** to empty (repo root) — the Procfile runs from backend
-   - Add a variable: `FLASK_ENV` = `production` (optional, disables debug)
+2. **New +** → **Web Service** → select `Coriolis-satellite-predictor-app`.
 
-4. **Generate domain:** In the service → **Settings** → **Networking** → **Generate Domain**. You'll get a URL like `https://xxx.railway.app`.
+3. Render auto-detects `render.yaml`. Verify the settings:
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `cd backend && gunicorn --bind 0.0.0.0:$PORT --timeout 120 --workers 1 app:app`
+   - **Instance Type:** Free
+   - **Environment Variable:** `FLASK_ENV` = `production`
+
+4. Click **Deploy Web Service**. Your app will be live at `https://<service-name>.onrender.com`.
 
 5. **Load satellite data** (after first deploy):
    ```bash
-   curl -X POST https://YOUR-RAILWAY-URL.railway.app/api/satellites/refresh
+   curl -X POST https://satellite-predictor.onrender.com/api/satellites/refresh
    ```
 
-6. **Important:** Railway uses ephemeral storage. The SQLite database resets on redeploy. Run `/api/satellites/refresh` after each deploy to repopulate TLE data.
+6. **Important:** Render's free tier uses ephemeral storage. The SQLite database resets on redeploy/restart. Run `/api/satellites/refresh` after each deploy to repopulate TLE data.
 
-**Note:** For persistent data, add a Railway Volume and mount it to `backend/database/` in the dashboard.
+**Note:** For persistent data across restarts, add a Render Disk (mountPath `/data`, set env var `DATABASE_PATH=/data/satellites.db`) or migrate to Render's free PostgreSQL.
 
 ---
 
