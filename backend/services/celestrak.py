@@ -1,48 +1,34 @@
-"""Service for fetching and parsing TLE data from Celestrak API."""
+"""Service for fetching and parsing TLE data from CelesTrak."""
 
 import requests
 from datetime import datetime
 
+from config import CELESTRAK_TLE_URL
 from database.db import save_satellites
 
-# Fetch multiple focused groups instead of the huge GROUP=active file.
-# This avoids the timeout and rate-limit issues on Render's free tier IPs.
-CELESTRAK_GROUPS = [
-    "stations",    # ISS, CSS, crewed stations (~30 sats)
-    "visual",      # Brightest/most visible objects (~150 sats)
-    "weather",     # Weather satellites (~200 sats)
-    "noaa",        # NOAA weather sats
-    "goes",        # Geostationary GOES
-    "resource",    # Earth resources
-    "sarsat",      # Search and rescue
-    "dmc",         # Disaster monitoring
-    "tdrss",       # Tracking and Data Relay
-    "argos",       # ARGOS data collection
-    "planet",      # Planet Labs
-    "spire",       # Spire Global
-    "geo",         # Geostationary (~600 sats)
-    "starlink",    # Starlink constellation (~6000 sats)
-    "iridium",     # Iridium
-    "intelsat",    # Intelsat
-    "swarm",       # Swarm Technologies
-    "amateur",     # Amateur radio satellites (~200 sats)
-    "cubesat",     # CubeSats
-    "tle-new",     # Newly launched objects
-]
-
-CELESTRAK_BASE = "https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP={}"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; SatellitePredictor/1.0)"}
 
 
-def _parse_tle_text(text):
-    """Parse raw TLE text block into a list of satellite dicts."""
+def parse_tle_text(text):
+    """
+    Parse a raw TLE text block into a list of satellite dicts.
+
+    Validates each TLE triplet (name, line1, line2) strictly:
+    - line1 must start with '1 ' and be at least 69 chars
+    - line2 must start with '2 ' and be at least 69 chars
+
+    Args:
+        text: Raw TLE string (name\\nline1\\nline2 repeated)
+
+    Returns:
+        List of dicts with keys: norad_id, name, tle_line1, tle_line2, fetched_at
+    """
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     lines = [line.strip() for line in text.strip().split("\n") if line.strip()]
     satellites = []
     i = 0
     while i < len(lines) - 2:
         name, line1, line2 = lines[i], lines[i + 1], lines[i + 2]
-        # Validate TLE lines start with correct identifiers
         if (line1.startswith("1 ") and line2.startswith("2 ")
                 and len(line1) >= 69 and len(line2) >= 69):
             norad_id = line1[2:7].strip()
@@ -59,50 +45,32 @@ def _parse_tle_text(text):
 
 def fetch_and_store_tles():
     """
-    Fetch TLE data from multiple focused CelesTrak groups in parallel and store in DB.
-    Uses smaller groups fetched concurrently to avoid the timeout caused by the full
-    active catalog (~14,000 satellites) on Render's free tier.
+    Fetch the full active TLE catalog from CelesTrak and store in the DB.
+
+    NOTE: CelesTrak blocks cloud hosting IP ranges (Render, AWS, GCP, etc.).
+    This function works from local/residential IPs only.
+    On Render, TLE data is loaded via the GitHub Actions workflow
+    (.github/workflows/tle_refresh.yml) which POSTs to /api/satellites/upload.
 
     Returns:
-        int: Total unique satellites fetched and stored
+        int: Number of satellites fetched and stored
 
     Raises:
-        Exception: If every group fetch fails
+        ConnectionError: On network or HTTP errors
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    try:
+        response = requests.get(CELESTRAK_TLE_URL, headers=HEADERS, timeout=60)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        raise ConnectionError(f"Failed to fetch TLE data: {e}") from e
 
-    def fetch_group(group):
-        url = CELESTRAK_BASE.format(group)
-        resp = requests.get(url, headers=HEADERS, timeout=30)
-        resp.raise_for_status()
-        text = resp.text.strip()
-        if not text or text.startswith("GP data has not"):
-            return []
-        return _parse_tle_text(text)
+    text = response.text.strip()
+    if not text or text.startswith("GP data has not"):
+        raise ConnectionError("CelesTrak returned empty or rate-limited response")
 
-    seen_norad = {}  # deduplicate by norad_id
-    failed_groups = []
+    satellites = parse_tle_text(text)
+    if not satellites:
+        raise ValueError("No valid TLE entries parsed from CelesTrak response")
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {executor.submit(fetch_group, g): g for g in CELESTRAK_GROUPS}
-        for future in as_completed(futures):
-            group = futures[future]
-            try:
-                sats = future.result()
-                for sat in sats:
-                    seen_norad[sat["norad_id"]] = sat
-            except Exception:
-                failed_groups.append(group)
-
-    if not seen_norad and failed_groups:
-        raise ConnectionError(
-            f"Failed to fetch TLE data from all groups: {', '.join(failed_groups)}"
-        )
-
-    all_satellites = list(seen_norad.values())
-    if all_satellites:
-        save_satellites(all_satellites)
-
-    return len(all_satellites)
-
-
+    save_satellites(satellites)
+    return len(satellites)
