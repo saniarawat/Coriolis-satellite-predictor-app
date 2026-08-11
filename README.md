@@ -124,14 +124,18 @@ This app is deployed on [Render](https://render.com) (free tier). A `render.yaml
 
 4. Click **Deploy Web Service**. Your app will be live at `https://<service-name>.onrender.com`.
 
-5. **Load satellite data** (after first deploy):
-   ```bash
-   curl -X POST https://satellite-predictor.onrender.com/api/satellites/refresh
-   ```
+5. **Set up automated data refresh (GitHub Actions):**
+   - The included GitHub Action fetches satellite data automatically every 6 hours (bypassing Celestrak's cloud block).
+   - In your GitHub repository **Settings** → **Secrets and variables** → **Actions**, add a repository secret named `REFRESH_SECRET` and set it to a secure string (e.g., a long random password).
+   - In your Render Dashboard, add the exact same `REFRESH_SECRET` to your web service's **Environment Variables** and save.
+   - Go to your GitHub repository's **Actions** tab, select **Refresh TLE Data**, and run it manually once to load the initial data.
 
-6. **Important:** Render's free tier uses ephemeral storage. The SQLite database resets on redeploy/restart. Run `/api/satellites/refresh` after each deploy to repopulate TLE data.
+6. **Important: Keep the app awake (UptimeRobot)!**
+   - Render's free tier spins down after 15 minutes of inactivity, which **wipes the SQLite database** on every sleep cycle.
+   - To prevent data loss and ensure your app opens instantly with data, sign up for a free account at [UptimeRobot](https://uptimerobot.com).
+   - Create an HTTP(s) monitor pointing to `https://satellite-predictor.onrender.com/api/health` with a 5-minute interval. This keeps your app awake 24/7!
 
-**Note:** For persistent data across restarts, add a Render Disk (mountPath `/data`, set env var `DATABASE_PATH=/data/satellites.db`) or migrate to Render's free PostgreSQL.
+**Note:** For persistent data across restarts without UptimeRobot, add a Render Disk (mountPath `/data`, set env var `DATABASE_PATH=/data/satellites.db`) or migrate to Render's free PostgreSQL.
 
 ---
 
