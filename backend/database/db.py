@@ -43,29 +43,34 @@ def init_db():
 
 def save_satellites(satellite_list):
     """
-    Insert or replace satellite rows.
+    Insert or replace satellite rows using a fast bulk executemany.
 
     Args:
         satellite_list: List of dicts with keys: norad_id, name, tle_line1, tle_line2, fetched_at
     """
+    if not satellite_list:
+        return
+
+    rows = [
+        (s["norad_id"], s["name"], s["tle_line1"], s["tle_line2"], s["fetched_at"])
+        for s in satellite_list
+    ]
+
     conn = _get_connection()
-    cursor = conn.cursor()
-    for s in satellite_list:
-        cursor.execute(
+    try:
+        # Speed up bulk writes on slow disks (Render free tier)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.executemany(
             """
             INSERT OR REPLACE INTO satellites (norad_id, name, tle_line1, tle_line2, fetched_at)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (
-                s["norad_id"],
-                s["name"],
-                s["tle_line1"],
-                s["tle_line2"],
-                s["fetched_at"],
-            ),
+            rows,
         )
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def get_all_satellites():
