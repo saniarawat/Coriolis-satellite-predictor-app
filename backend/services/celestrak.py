@@ -17,8 +17,11 @@ def fetch_and_store_tles():
     Raises:
         Exception: On network or parsing errors
     """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; SatellitePredictor/1.0)"
+    }
     try:
-        response = requests.get(CELESTRAK_TLE_URL, timeout=30)
+        response = requests.get(CELESTRAK_TLE_URL, headers=headers, timeout=90)
         response.raise_for_status()
     except requests.RequestException as e:
         raise ConnectionError(f"Failed to fetch TLE data: {e}") from e
