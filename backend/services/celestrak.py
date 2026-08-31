@@ -1,12 +1,14 @@
-"""Service for fetching and parsing TLE data from CelesTrak."""
+"""Service for fetching and parsing TLE data from Space-Track.org."""
 
+import os
 import requests
 from datetime import datetime
 
-from config import CELESTRAK_TLE_URL
 from database.db import save_satellites
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; SatellitePredictor/1.0)"}
+# Space-Track endpoints
+SPACE_TRACK_LOGIN_URL = "https://www.space-track.org/ajaxauth/login"
+SPACE_TRACK_QUERY_URL = "https://www.space-track.org/basicspacedata/query/class/gp/decay_date/null-val/EPOCH/%3Enow-30/orderby/NORAD_CAT_ID/format/3le/emptyresult/show"
 
 
 def parse_tle_text(text):
@@ -45,32 +47,48 @@ def parse_tle_text(text):
 
 def fetch_and_store_tles():
     """
-    Fetch the full active TLE catalog from CelesTrak and store in the DB.
-
-    NOTE: CelesTrak blocks cloud hosting IP ranges (Render, AWS, GCP, etc.).
-    This function works from local/residential IPs only.
-    On Render, TLE data is loaded via the GitHub Actions workflow
-    (.github/workflows/tle_refresh.yml) which POSTs to /api/satellites/upload.
+    Fetch the full active TLE catalog from Space-Track.org and store in the DB.
+    
+    This requires SPACETRACK_USER and SPACETRACK_PASSWORD environment variables.
+    Space-Track explicitly allows cloud server IPs, bypassing the CelesTrak blocks.
 
     Returns:
         int: Number of satellites fetched and stored
 
     Raises:
-        ConnectionError: On network or HTTP errors
+        ConnectionError: On network, auth, or HTTP errors
     """
-    try:
-        response = requests.get(CELESTRAK_TLE_URL, headers=HEADERS, timeout=60)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        raise ConnectionError(f"Failed to fetch TLE data: {e}") from e
+    user = os.environ.get("SPACETRACK_USER")
+    password = os.environ.get("SPACETRACK_PASSWORD")
+    
+    if not user or not password:
+        raise ValueError("SPACETRACK_USER and SPACETRACK_PASSWORD environment variables must be set.")
 
-    text = response.text.strip()
-    if not text or text.startswith("GP data has not"):
-        raise ConnectionError("CelesTrak returned empty or rate-limited response")
+    with requests.Session() as session:
+        # 1. Login to establish session cookies
+        login_data = {"identity": user, "password": password}
+        try:
+            login_resp = session.post(SPACE_TRACK_LOGIN_URL, data=login_data, timeout=30)
+            login_resp.raise_for_status()
+        except requests.RequestException as e:
+            raise ConnectionError(f"Failed to reach Space-Track login: {e}") from e
+
+        # 2. Fetch the active satellite catalog
+        try:
+            resp = session.get(SPACE_TRACK_QUERY_URL, timeout=120)
+            if resp.status_code == 401:
+                raise ConnectionError("Space-Track authentication failed. Check your SPACETRACK_USER and SPACETRACK_PASSWORD.")
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            raise ConnectionError(f"Failed to download TLE data from Space-Track: {e}") from e
+
+        text = resp.text.strip()
+        if not text:
+            raise ConnectionError("Space-Track returned an empty response.")
 
     satellites = parse_tle_text(text)
     if not satellites:
-        raise ValueError("No valid TLE entries parsed from CelesTrak response")
+        raise ValueError("No valid TLE entries parsed from Space-Track response")
 
     save_satellites(satellites)
     return len(satellites)
