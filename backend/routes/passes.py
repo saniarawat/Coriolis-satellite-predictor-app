@@ -40,7 +40,7 @@ def get_city_passes():
         loc = geocode_city(city)
         lat, lon = loc["lat"], loc["lon"]
 
-        satellites = get_all_satellites()[:300]
+        satellites = get_all_satellites()[:50]
         all_passes = []
 
         for sat in satellites:
@@ -102,7 +102,7 @@ def get_top_pass_satellites():
         loc = geocode_city(city)
         lat, lon = loc["lat"], loc["lon"]
 
-        satellites = get_all_satellites()[:300]
+        satellites = get_all_satellites()[:50]
         pass_counts = defaultdict(int)
 
         for sat in satellites:
